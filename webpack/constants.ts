@@ -96,6 +96,19 @@ export const cactbotHtmlChunksMap = {
       cactbotModules.raidboss,
     ],
   },
+  // Studio Artificial: TTS 전용 문구 페이지(raidboss.html · raidboss_alerts_only.html 과 같고 studioTts=1)
+  'ui/raidboss/raidboss-tts.html': {
+    chunks: [
+      cactbotChunks.raidbossData,
+      cactbotModules.raidboss,
+    ],
+  },
+  'ui/raidboss/raidboss_alerts_only-tts.html': {
+    chunks: [
+      cactbotChunks.raidbossData,
+      cactbotModules.raidboss,
+    ],
+  },
   'ui/raidboss/raidboss_silent.html': {
     chunks: [
       cactbotChunks.raidbossData,
