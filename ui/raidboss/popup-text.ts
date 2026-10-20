@@ -276,6 +276,22 @@ const isObject = (x: unknown): x is { [key: string]: unknown } => {
 // User trigger may pass anything as parameters
 type TriggerParams = { [key: string]: unknown };
 
+// Studio Artificial: TTS 전용 문구를 렌더링하는 동안만 채워진다(PopupText._studioTtsText).
+// 이때 output.이름() 은 이 문구를 먼저 쓴다.
+let studioTtsStrings: OutputStrings | undefined;
+// data 복사: 배열·일반 객체는 깊게, 그 밖(파티 정보 등 메서드가 있는 객체)은 그대로 공유
+const studioCloneData = <T>(v: T): T => {
+  if (Array.isArray(v))
+    return v.map((x: unknown) => studioCloneData(x)) as T;
+  if (v !== null && typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype) {
+    const out: { [key: string]: unknown } = {};
+    for (const [k, x] of Object.entries(v as { [key: string]: unknown }))
+      out[k] = studioCloneData(x);
+    return out as T;
+  }
+  return v;
+};
+
 class TriggerOutputProxy {
   public outputStrings: OutputStrings;
   public overrideStrings: OutputStrings = {};
@@ -348,7 +364,16 @@ class TriggerOutputProxy {
           // Ideally, response provides everything and trigger provides nothing,
           // or there's no response and trigger provides everything.  Having
           // this well-defined smooths out the collision edge cases.
-          let str = target.getReplacement(target.overrideStrings[name], params, name, id);
+          let str = studioTtsStrings !== undefined
+            ? target.getReplacement(
+              studioTtsStrings[name] as OutputStrings[string],
+              params,
+              name,
+              id,
+            )
+            : undefined;
+          if (str === undefined)
+            str = target.getReplacement(target.overrideStrings[name], params, name, id);
           if (str === undefined) {
             const responseString = target.responseOutputStrings[name];
             if (isObject(responseString))
@@ -1435,6 +1460,7 @@ export class PopupText {
   }
 
   _onTriggerInternalResponse(triggerHelper: TriggerHelper): void {
+    this._studioTtsSnapshot(triggerHelper);
     let response: ResponseField<RaidbossData, Matches> = {};
     const trigger = triggerHelper.trigger;
     if (trigger.response) {
@@ -1511,9 +1537,86 @@ export class PopupText {
           // eslint-disable-next-line @typescript-eslint/no-base-to-string
           triggerHelper.ttsText = result?.toString();
       } else {
-        triggerHelper.ttsText = triggerHelper.defaultTTSText;
+        triggerHelper.ttsText = this._studioTtsText(triggerHelper) ?? triggerHelper.defaultTTSText;
       }
     }
+  }
+
+  // Studio Artificial: 사용자 파일의 PerTriggerOptions[id].TTSOutputStrings(문구 이름 → tts 문구)가 있으면
+  // 화면 알림과 같은 알림 함수를 같은 data·matches 로 한 번 더 불러, 그 문구로 렌더링한 문장을 읽는다.
+  // 파티원 값·직업/닉네임 표기 규칙은 화면 문구와 같다. TTSOutputStrings 가 없는 트리거는 원래 동작 그대로.
+  _studioTtsText(triggerHelper: TriggerHelper): string | undefined {
+    const strings = this._studioTtsStrings(triggerHelper);
+    const snapshot = (triggerHelper as { studioData?: RaidbossData }).studioData;
+    if (strings === undefined || snapshot === undefined)
+      return undefined;
+    // 알림 함수가 data 를 바꿀 수 있으므로(예: "이미 알렸음" 표시) 처음 부르기 직전의 data 복사본으로 부른다 — 진짜 data 는 건드리지 않는다
+    const data = studioCloneData(snapshot);
+    const matches = triggerHelper.matches;
+    const output = triggerHelper.output;
+    const evaluate = (f: unknown): unknown => {
+      let result = f;
+      if (typeof result === 'function')
+        result = (result as (d: RaidbossData, m: Matches, o: Output) => unknown)(
+          data,
+          matches,
+          output,
+        );
+      if (typeof result !== 'object' || result === null)
+        return result;
+      const obj = result as { [lang: string]: unknown };
+      return evaluate(obj[this.displayLang] ?? obj['en']);
+    };
+    studioTtsStrings = strings;
+    try {
+      let response: ResponseField<RaidbossData, Matches> | undefined;
+      for (const textType of ['alarm', 'alert', 'info'] as const) {
+        const lowerTextKey = textMap[textType].text;
+        const upperTextKey = textMap[textType].upperText;
+        let textObj: unknown = triggerHelper.triggerOptions[upperTextKey];
+        if (textObj === undefined && triggerHelper.trigger[lowerTextKey] !== undefined)
+          textObj = triggerHelper.trigger[lowerTextKey];
+        if (textObj === undefined && triggerHelper.response !== undefined) {
+          // 응답 함수가 이미 렌더링한 글자를 돌려줬을 수 있으니 응답도 tts 문구로 다시 부른다(_onTriggerInternalResponse 와 같은 방식)
+          if (response === undefined) {
+            response = triggerHelper.trigger.response ?? {};
+            while (typeof response === 'function')
+              response = response(data, matches, output);
+            if (!response)
+              response = {};
+          }
+          textObj = (response as { [key: string]: unknown })[lowerTextKey];
+        }
+        if (textObj === undefined || textObj === null)
+          continue;
+        let text = evaluate(textObj);
+        if (text === undefined || text === null)
+          continue;
+        if (typeof text === 'number')
+          text = text.toString();
+        if (typeof text !== 'string')
+          text = String(text);
+        text = (text as string).trim();
+        if (text === '')
+          continue;
+        return this.options.TransformText(text as string) ?? text as string;
+      }
+      return undefined;
+    } finally {
+      studioTtsStrings = undefined;
+    }
+  }
+
+  _studioTtsStrings(triggerHelper: TriggerHelper): OutputStrings | undefined {
+    const strings = (triggerHelper.triggerOptions as { TTSOutputStrings?: OutputStrings })
+      .TTSOutputStrings;
+    return strings !== undefined && typeof strings === 'object' ? strings : undefined;
+  }
+
+  // 응답·알림 함수를 부르기 직전의 data — TTS 전용 문구가 있는 트리거만
+  _studioTtsSnapshot(triggerHelper: TriggerHelper): void {
+    if (this._studioTtsStrings(triggerHelper) !== undefined)
+      (triggerHelper as { studioData?: RaidbossData }).studioData = studioCloneData(this.data);
   }
 
   _onTriggerInternalPlayAudio(triggerHelper: TriggerHelper): void {
