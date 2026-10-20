@@ -1544,7 +1544,7 @@ export class PopupText {
 
   // Studio Artificial: 사용자 파일의 PerTriggerOptions[id].TTSOutputStrings(문구 이름 → tts 문구)가 있으면
   // 화면 알림과 같은 알림 함수를 같은 data·matches 로 한 번 더 불러, 그 문구로 렌더링한 문장을 읽는다.
-  // 파티원 값·직업/닉네임 표기 규칙은 화면 문구와 같다. 쿼리 studioTts=1 일 때만(원본 페이지 동작은 그대로).
+  // 파티원 값·직업/닉네임 표기 규칙은 화면 문구와 같다. TTSOutputStrings 가 없는 트리거는 원래 동작 그대로.
   _studioTtsText(triggerHelper: TriggerHelper): string | undefined {
     const strings = this._studioTtsStrings(triggerHelper);
     const snapshot = (triggerHelper as { studioData?: RaidbossData }).studioData;
@@ -1608,8 +1608,6 @@ export class PopupText {
   }
 
   _studioTtsStrings(triggerHelper: TriggerHelper): OutputStrings | undefined {
-    if (!(this.options as { StudioTts?: boolean }).StudioTts)
-      return undefined;
     const strings = (triggerHelper.triggerOptions as { TTSOutputStrings?: OutputStrings })
       .TTSOutputStrings;
     return strings !== undefined && typeof strings === 'object' ? strings : undefined;

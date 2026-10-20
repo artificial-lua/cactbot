@@ -59,10 +59,6 @@ UserConfig.getUserConfigLocation('raidboss', defaultOptions, () => {
     }
   }
 
-  // Studio Artificial: TTS 전용 문구(raidboss-tts.html · raidboss_alerts_only-tts.html)
-  if (params.get('studioTts') === '1')
-    (options as { StudioTts?: boolean }).StudioTts = true;
-
   const alertsParam = params.get('alerts');
   if (alertsParam !== null) {
     const previous = options.AlertsEnabled;
