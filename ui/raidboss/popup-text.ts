@@ -1630,8 +1630,14 @@ export class PopupText {
 
   // Studio Artificial: TTS 전용 문구가 **없으면** 알림 문구를 읽고(원래 동작), **있지만 빈 칸이면** 알림 문구로 대신 읽지 않고 TTS 를 끈다
   // (2026-10-21 사용자). TTS 대신 나오던 경보음도 내지 않는다(_onTriggerInternalPlayAudio). 화면 알림은 그대로.
-  // 빈 칸 = TTSOutputStrings 의 그 문구가 지금 언어로 ''. 고정 문구용 TTSText 는 원래 cactbot 이 빈 값이면 TTS 를 끄므로 따로 다루지 않는다.
+  // 빈 칸 = TTSOutputStrings 의 그 문구가 지금 언어로 '', 또는 TTSText 가 '' 이거나 언어별 객체의 지금 언어가 ''.
   _studioMuteCheck(triggerHelper: TriggerHelper): void {
+    // 원래 cactbot 의 TTS 칸(TTSText, 설정 화면·우리 고정 문구)도 빈 칸이면 같은 규칙 — TTS 는 원래도 꺼지고, 대신 나오던 경보음을 막는다
+    const fixed = triggerHelper.triggerOptions.TTSText;
+    if (fixed !== undefined && typeof fixed !== 'function' && studioBlank(fixed, this.displayLang)) {
+      triggerHelper.studioMuted = true;
+      return;
+    }
     if (this._studioTtsStrings(triggerHelper) === undefined)
       return;
     studioTtsBlankHit = false;
