@@ -1658,8 +1658,9 @@ export class PopupText {
   }
 
   _onTriggerInternalPlayAudio(triggerHelper: TriggerHelper): void {
-    // Studio Artificial: TTS 전용 문구가 빈 칸이면 TTS 대신 나오던 경보음도 내지 않는다(2026-10-21 사용자 "알람 사운드도 안 나오길")
-    if (triggerHelper.studioMuted === true)
+    // Studio Artificial: TTS 전용 문구가 빈 칸이면 TTS 대신 나오던 경보음도 내지 않는다 — **TTS 로 알리는 모드(텍스트와 TTS·TTS만)일 때만**.
+    // '텍스트와 소리'처럼 원래 TTS 를 안 쓰는 모드는 경보음이 본래 출력이라 그대로 낸다(2026-10-21 사용자).
+    if (triggerHelper.studioMuted === true && triggerHelper.spokenAlertsEnabled)
       return;
     if (
       triggerHelper.trigger.sound !== undefined &&
