@@ -279,7 +279,7 @@ type TriggerParams = { [key: string]: unknown };
 // Studio Artificial: TTS 전용 문구를 렌더링하는 동안만 채워진다(PopupText._studioTtsText).
 // 이때 output.이름() 은 이 문구를 먼저 쓴다.
 let studioTtsStrings: OutputStrings | undefined;
-// Studio Artificial: 렌더링 중 TTS 전용 문구가 '빈 칸'으로 적힌 문구 이름을 만났는가(그 트리거는 알림 문구로 대신 읽지 않고 TTS 를 끈다)
+// Studio Artificial: 렌더링 중 TTS 전용 문구가 '빈 칸'으로 적힌 문구 이름을 만났는가(그 트리거는 알림 문구로 대신 읽지 않고 TTS·경보음을 끈다)
 let studioTtsBlankHit = false;
 const studioBlank = (t: unknown, lang: string): boolean => {
   if (typeof t === 'string')
@@ -549,7 +549,7 @@ export type RaidbossTriggerOutput =
 const defaultOutput = TriggerOutputProxy.makeOutput({}, 'en');
 
 export interface TriggerHelper {
-  // Studio Artificial: TTS 전용 문구가 빈 칸 → TTS 끔(알림 문구로 대신 읽지 않음) / 미리 렌더링한 TTS 문장(null = 없음)
+  // Studio Artificial: TTS 전용 문구가 빈 칸 → TTS·경보음 끔(알림 문구로 대신 읽지 않음, 화면은 그대로) / 미리 렌더링한 TTS 문장(null = 없음)
   studioMuted?: boolean;
   studioTts?: string | null;
   valueOrFunction: (f: RaidbossTriggerField) => RaidbossTriggerOutput;
@@ -1629,9 +1629,15 @@ export class PopupText {
   }
 
   // Studio Artificial: TTS 전용 문구가 **없으면** 알림 문구를 읽고(원래 동작), **있지만 빈 칸이면** 알림 문구로 대신 읽지 않고 TTS 를 끈다
-  // (2026-10-21 사용자). 화면 알림·효과음은 원래 cactbot 그대로 — 설정 화면에서 TTS 칸을 비웠을 때(TTSText '')와 같은 결과.
-  // 빈 칸 = TTSOutputStrings 의 그 문구가 지금 언어로 ''. 고정 문구용 TTSText 는 원래 cactbot 이 빈 값이면 TTS 를 끄므로 따로 다루지 않는다.
+  // (2026-10-21 사용자). TTS 대신 나오던 경보음도 내지 않는다(_onTriggerInternalPlayAudio). 화면 알림은 그대로.
+  // 빈 칸 = TTSOutputStrings 의 그 문구가 지금 언어로 '', 또는 TTSText 가 '' 이거나 언어별 객체의 지금 언어가 ''.
   _studioMuteCheck(triggerHelper: TriggerHelper): void {
+    // 원래 cactbot 의 TTS 칸(TTSText, 설정 화면·우리 고정 문구)도 빈 칸이면 같은 규칙 — TTS 는 원래도 꺼지고, 대신 나오던 경보음을 막는다
+    const fixed = triggerHelper.triggerOptions.TTSText;
+    if (fixed !== undefined && typeof fixed !== 'function' && studioBlank(fixed, this.displayLang)) {
+      triggerHelper.studioMuted = true;
+      return;
+    }
     if (this._studioTtsStrings(triggerHelper) === undefined)
       return;
     studioTtsBlankHit = false;
@@ -1658,6 +1664,10 @@ export class PopupText {
   }
 
   _onTriggerInternalPlayAudio(triggerHelper: TriggerHelper): void {
+    // Studio Artificial: TTS 전용 문구가 빈 칸이면 TTS 대신 나오던 경보음도 내지 않는다 — **TTS 로 알리는 모드(텍스트와 TTS·TTS만)일 때만**.
+    // '텍스트와 소리'처럼 원래 TTS 를 안 쓰는 모드는 경보음이 본래 출력이라 그대로 낸다(2026-10-21 사용자).
+    if (triggerHelper.studioMuted === true && triggerHelper.spokenAlertsEnabled)
+      return;
     if (
       triggerHelper.trigger.sound !== undefined &&
       triggerHelper.soundUrl !== undefined &&
