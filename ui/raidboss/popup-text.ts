@@ -279,7 +279,7 @@ type TriggerParams = { [key: string]: unknown };
 // Studio Artificial: TTS 전용 문구를 렌더링하는 동안만 채워진다(PopupText._studioTtsText).
 // 이때 output.이름() 은 이 문구를 먼저 쓴다.
 let studioTtsStrings: OutputStrings | undefined;
-// Studio Artificial: 렌더링 중 TTS 전용 문구가 '빈 칸'으로 적힌 문구 이름을 만났는가(그 트리거는 화면 알림·소리·TTS 를 모두 끈다)
+// Studio Artificial: 렌더링 중 TTS 전용 문구가 '빈 칸'으로 적힌 문구 이름을 만났는가(그 트리거는 TTS·효과음을 끈다 — 화면 알림은 그대로)
 let studioTtsBlankHit = false;
 const studioBlank = (t: unknown, lang: string): boolean => {
   if (typeof t === 'string')
@@ -549,7 +549,7 @@ export type RaidbossTriggerOutput =
 const defaultOutput = TriggerOutputProxy.makeOutput({}, 'en');
 
 export interface TriggerHelper {
-  // Studio Artificial: TTS 전용 문구가 빈 칸 → 화면 알림·소리·진동·TTS 모두 끔 / 미리 렌더링한 TTS 문장(null = 없음)
+  // Studio Artificial: TTS 전용 문구가 빈 칸 → TTS·효과음 끔(화면 알림은 그대로) / 미리 렌더링한 TTS 문장(null = 없음)
   studioMuted?: boolean;
   studioTts?: string | null;
   valueOrFunction: (f: RaidbossTriggerField) => RaidbossTriggerOutput;
@@ -1505,7 +1505,7 @@ export class PopupText {
   }
 
   _onTriggerInternalRumble(triggerHelper: TriggerHelper): void {
-    if (!this.options.RumbleEnabled || triggerHelper.studioMuted === true)
+    if (!this.options.RumbleEnabled)
       return;
 
     // getGamepads returns a "GamePadList" which isn't iterable.
@@ -1628,8 +1628,8 @@ export class PopupText {
     }
   }
 
-  // Studio Artificial: TTS 전용 문구가 빈 칸이면(2026-10-21 사용자 "tts 필드가 있지만 빈 칸이면 TTS 도 알람도 실행 안 하게")
-  // 그 트리거의 화면 알림·소리·진동·TTS 를 모두 끈다. 빈 칸 = TTSOutputStrings 의 그 문구가 지금 언어로 '' 이거나,
+  // Studio Artificial: TTS 전용 문구가 빈 칸이면 그 트리거의 TTS 와, TTS 대신 나오던 효과음(경보음)을 끈다 — 화면 알림은 그대로
+  // (2026-10-21 사용자 "tts 필드가 빈 칸이면 TTS 도 알람도 실행 안 하게" → "화면 알림은 그대로 유지한 채 TTS 만"). 빈 칸 = TTSOutputStrings 의 그 문구가 지금 언어로 '' 이거나,
   // TTSText 를 언어별 객체로 적고 지금 언어가 '' 인 경우(설정 화면이 남기는 문자열 '' 은 원래대로 'TTS 만 끔').
   _studioMuteCheck(triggerHelper: TriggerHelper): void {
     const fixed = triggerHelper.triggerOptions.TTSText;
@@ -1798,8 +1798,6 @@ export class PopupText {
   }
 
   _addTextFor(textType: Text, triggerHelper: TriggerHelper): void {
-    if (triggerHelper.studioMuted === true)
-      return;
     // infoText
     const lowerTextKey = textMap[textType].text;
     // InfoText
