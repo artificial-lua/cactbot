@@ -279,6 +279,16 @@ type TriggerParams = { [key: string]: unknown };
 // Studio Artificial: TTS 전용 문구를 렌더링하는 동안만 채워진다(PopupText._studioTtsText).
 // 이때 output.이름() 은 이 문구를 먼저 쓴다.
 let studioTtsStrings: OutputStrings | undefined;
+// Studio Artificial: 렌더링 중 TTS 전용 문구가 '빈 칸'으로 적힌 문구 이름을 만났는가(그 트리거는 화면 알림·소리·TTS 를 모두 끈다)
+let studioTtsBlankHit = false;
+const studioBlank = (t: unknown, lang: string): boolean => {
+  if (typeof t === 'string')
+    return t.trim() === '';
+  if (typeof t !== 'object' || t === null)
+    return false;
+  const v = (t as { [lang: string]: unknown })[lang] ?? (t as { [lang: string]: unknown })['en'];
+  return typeof v === 'string' && v.trim() === '';
+};
 // data 복사: 배열·일반 객체는 깊게, 그 밖(파티 정보 등 메서드가 있는 객체)은 그대로 공유
 const studioCloneData = <T>(v: T): T => {
   if (Array.isArray(v))
@@ -364,6 +374,8 @@ class TriggerOutputProxy {
           // Ideally, response provides everything and trigger provides nothing,
           // or there's no response and trigger provides everything.  Having
           // this well-defined smooths out the collision edge cases.
+          if (studioTtsStrings !== undefined && studioTtsStrings[name] !== undefined && studioBlank(studioTtsStrings[name], target.displayLang))
+            studioTtsBlankHit = true;
           let str = studioTtsStrings !== undefined
             ? target.getReplacement(
               studioTtsStrings[name] as OutputStrings[string],
@@ -537,6 +549,9 @@ export type RaidbossTriggerOutput =
 const defaultOutput = TriggerOutputProxy.makeOutput({}, 'en');
 
 export interface TriggerHelper {
+  // Studio Artificial: TTS 전용 문구가 빈 칸 → 화면 알림·소리·진동·TTS 모두 끔 / 미리 렌더링한 TTS 문장(null = 없음)
+  studioMuted?: boolean;
+  studioTts?: string | null;
   valueOrFunction: (f: RaidbossTriggerField) => RaidbossTriggerOutput;
   trigger: ProcessedTrigger;
   now: number;
@@ -1188,6 +1203,7 @@ export class PopupText {
         this._onTriggerInternalSound(triggerHelper);
         this._onTriggerInternalSoundVolume(triggerHelper);
         this._onTriggerInternalResponse(triggerHelper);
+        this._studioMuteCheck(triggerHelper);
         this._onTriggerInternalAlarmText(triggerHelper);
         this._onTriggerInternalAlertText(triggerHelper);
         this._onTriggerInternalInfoText(triggerHelper);
@@ -1489,7 +1505,7 @@ export class PopupText {
   }
 
   _onTriggerInternalRumble(triggerHelper: TriggerHelper): void {
-    if (!this.options.RumbleEnabled)
+    if (!this.options.RumbleEnabled || triggerHelper.studioMuted === true)
       return;
 
     // getGamepads returns a "GamePadList" which isn't iterable.
@@ -1515,6 +1531,10 @@ export class PopupText {
   }
 
   _onTriggerInternalTTS(triggerHelper: TriggerHelper): void {
+    if (triggerHelper.studioMuted === true) {
+      triggerHelper.ttsText = undefined;
+      return;
+    }
     if (!triggerHelper.groupSpokenAlertsEnabled || typeof triggerHelper.ttsText === 'undefined') {
       let result = undefined;
       if (triggerHelper.triggerOptions.TTSText !== undefined) {
@@ -1537,7 +1557,8 @@ export class PopupText {
           // eslint-disable-next-line @typescript-eslint/no-base-to-string
           triggerHelper.ttsText = result?.toString();
       } else {
-        triggerHelper.ttsText = this._studioTtsText(triggerHelper) ?? triggerHelper.defaultTTSText;
+        const studio = triggerHelper.studioTts !== undefined ? triggerHelper.studioTts : this._studioTtsText(triggerHelper);
+        triggerHelper.ttsText = (studio === null ? undefined : studio) ?? triggerHelper.defaultTTSText;
       }
     }
   }
@@ -1607,6 +1628,28 @@ export class PopupText {
     }
   }
 
+  // Studio Artificial: TTS 전용 문구가 빈 칸이면(2026-10-21 사용자 "tts 필드가 있지만 빈 칸이면 TTS 도 알람도 실행 안 하게")
+  // 그 트리거의 화면 알림·소리·진동·TTS 를 모두 끈다. 빈 칸 = TTSOutputStrings 의 그 문구가 지금 언어로 '' 이거나,
+  // TTSText 를 언어별 객체로 적고 지금 언어가 '' 인 경우(설정 화면이 남기는 문자열 '' 은 원래대로 'TTS 만 끔').
+  _studioMuteCheck(triggerHelper: TriggerHelper): void {
+    const fixed = triggerHelper.triggerOptions.TTSText;
+    if (typeof fixed === 'object' && fixed !== null && studioBlank(fixed, this.displayLang)) {
+      triggerHelper.studioMuted = true;
+      return;
+    }
+    if (this._studioTtsStrings(triggerHelper) === undefined)
+      return;
+    studioTtsBlankHit = false;
+    const text = this._studioTtsText(triggerHelper);
+    const blank = studioTtsBlankHit;
+    studioTtsBlankHit = false;
+    if (text === undefined && blank) {
+      triggerHelper.studioMuted = true;
+      return;
+    }
+    triggerHelper.studioTts = text ?? null; // TTS 단계에서 다시 렌더링하지 않는다(null = 전용 문구로 만든 문장 없음)
+  }
+
   _studioTtsStrings(triggerHelper: TriggerHelper): OutputStrings | undefined {
     const strings = (triggerHelper.triggerOptions as { TTSOutputStrings?: OutputStrings })
       .TTSOutputStrings;
@@ -1620,6 +1663,8 @@ export class PopupText {
   }
 
   _onTriggerInternalPlayAudio(triggerHelper: TriggerHelper): void {
+    if (triggerHelper.studioMuted === true)
+      return;
     if (
       triggerHelper.trigger.sound !== undefined &&
       triggerHelper.soundUrl !== undefined &&
@@ -1753,6 +1798,8 @@ export class PopupText {
   }
 
   _addTextFor(textType: Text, triggerHelper: TriggerHelper): void {
+    if (triggerHelper.studioMuted === true)
+      return;
     // infoText
     const lowerTextKey = textMap[textType].text;
     // InfoText
