@@ -281,6 +281,8 @@ type TriggerParams = { [key: string]: unknown };
 let studioTtsStrings: OutputStrings | undefined;
 // Studio Artificial: 렌더링 중 TTS 전용 문구가 '빈 칸'으로 적힌 문구 이름을 만났는가(그 트리거는 알림 문구로 대신 읽지 않고 TTS·경보음을 끈다)
 let studioTtsBlankHit = false;
+// Studio Artificial: TTS 렌더링 중 불린 문구 이름(TTSOnlyIfOutputs 판정용 — 예: 'you' 가 불렸으면 '나'가 대상)
+const studioTtsCalled = new Set<string>();
 const studioBlank = (t: unknown, lang: string): boolean => {
   if (typeof t === 'string')
     return t.trim() === '';
@@ -374,6 +376,8 @@ class TriggerOutputProxy {
           // Ideally, response provides everything and trigger provides nothing,
           // or there's no response and trigger provides everything.  Having
           // this well-defined smooths out the collision edge cases.
+          if (studioTtsStrings !== undefined)
+            studioTtsCalled.add(name);
           if (studioTtsStrings !== undefined && studioTtsStrings[name] !== undefined && studioBlank(studioTtsStrings[name], target.displayLang))
             studioTtsBlankHit = true;
           let str = studioTtsStrings !== undefined
@@ -1641,10 +1645,20 @@ export class PopupText {
     if (this._studioTtsStrings(triggerHelper) === undefined)
       return;
     studioTtsBlankHit = false;
+    studioTtsCalled.clear();
     const text = this._studioTtsText(triggerHelper);
     const blank = studioTtsBlankHit;
+    const called = new Set(studioTtsCalled);
     studioTtsBlankHit = false;
+    studioTtsCalled.clear();
     if (text === undefined && blank) {
+      triggerHelper.studioMuted = true;
+      return;
+    }
+    // TTSOnlyIfOutputs: 이 문구 이름 중 하나가 문장에 쓰였을 때만 읽는다(2026-10-21 사용자 "내가 대상일 때만 듣기" — ['you']).
+    // 아니면 빈 칸과 같다(TTS·TTS 모드의 경보음 끔, 화면 알림은 그대로).
+    const onlyIf = (triggerHelper.triggerOptions as { TTSOnlyIfOutputs?: unknown }).TTSOnlyIfOutputs;
+    if (Array.isArray(onlyIf) && onlyIf.length > 0 && !onlyIf.some((n) => called.has(String(n)))) {
       triggerHelper.studioMuted = true;
       return;
     }
@@ -1652,9 +1666,12 @@ export class PopupText {
   }
 
   _studioTtsStrings(triggerHelper: TriggerHelper): OutputStrings | undefined {
-    const strings = (triggerHelper.triggerOptions as { TTSOutputStrings?: OutputStrings })
-      .TTSOutputStrings;
-    return strings !== undefined && typeof strings === 'object' ? strings : undefined;
+    const opts = triggerHelper.triggerOptions as { TTSOutputStrings?: OutputStrings; TTSOnlyIfOutputs?: unknown };
+    const strings = opts.TTSOutputStrings;
+    if (strings !== undefined && typeof strings === 'object')
+      return strings;
+    // 전용 문구가 없어도 TTSOnlyIfOutputs 가 있으면 판정하려고 한 번 렌더링한다(문구는 화면과 같다)
+    return Array.isArray(opts.TTSOnlyIfOutputs) ? {} : undefined;
   }
 
   // 응답·알림 함수를 부르기 직전의 data — TTS 전용 문구가 있는 트리거만
