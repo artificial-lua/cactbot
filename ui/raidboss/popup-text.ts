@@ -279,7 +279,7 @@ type TriggerParams = { [key: string]: unknown };
 // Studio Artificial: TTS 전용 문구를 렌더링하는 동안만 채워진다(PopupText._studioTtsText).
 // 이때 output.이름() 은 이 문구를 먼저 쓴다.
 let studioTtsStrings: OutputStrings | undefined;
-// Studio Artificial: 렌더링 중 TTS 전용 문구가 '빈 칸'으로 적힌 문구 이름을 만났는가(그 트리거는 TTS·효과음을 끈다 — 화면 알림은 그대로)
+// Studio Artificial: 렌더링 중 TTS 전용 문구가 '빈 칸'으로 적힌 문구 이름을 만났는가(그 트리거는 알림 문구로 대신 읽지 않고 TTS 를 끈다)
 let studioTtsBlankHit = false;
 const studioBlank = (t: unknown, lang: string): boolean => {
   if (typeof t === 'string')
@@ -549,7 +549,7 @@ export type RaidbossTriggerOutput =
 const defaultOutput = TriggerOutputProxy.makeOutput({}, 'en');
 
 export interface TriggerHelper {
-  // Studio Artificial: TTS 전용 문구가 빈 칸 → TTS·효과음 끔(화면 알림은 그대로) / 미리 렌더링한 TTS 문장(null = 없음)
+  // Studio Artificial: TTS 전용 문구가 빈 칸 → TTS 끔(알림 문구로 대신 읽지 않음) / 미리 렌더링한 TTS 문장(null = 없음)
   studioMuted?: boolean;
   studioTts?: string | null;
   valueOrFunction: (f: RaidbossTriggerField) => RaidbossTriggerOutput;
@@ -1628,15 +1628,10 @@ export class PopupText {
     }
   }
 
-  // Studio Artificial: TTS 전용 문구가 빈 칸이면 그 트리거의 TTS 와, TTS 대신 나오던 효과음(경보음)을 끈다 — 화면 알림은 그대로
-  // (2026-10-21 사용자 "tts 필드가 빈 칸이면 TTS 도 알람도 실행 안 하게" → "화면 알림은 그대로 유지한 채 TTS 만"). 빈 칸 = TTSOutputStrings 의 그 문구가 지금 언어로 '' 이거나,
-  // TTSText 를 언어별 객체로 적고 지금 언어가 '' 인 경우(설정 화면이 남기는 문자열 '' 은 원래대로 'TTS 만 끔').
+  // Studio Artificial: TTS 전용 문구가 **없으면** 알림 문구를 읽고(원래 동작), **있지만 빈 칸이면** 알림 문구로 대신 읽지 않고 TTS 를 끈다
+  // (2026-10-21 사용자). 화면 알림·효과음은 원래 cactbot 그대로 — 설정 화면에서 TTS 칸을 비웠을 때(TTSText '')와 같은 결과.
+  // 빈 칸 = TTSOutputStrings 의 그 문구가 지금 언어로 ''. 고정 문구용 TTSText 는 원래 cactbot 이 빈 값이면 TTS 를 끄므로 따로 다루지 않는다.
   _studioMuteCheck(triggerHelper: TriggerHelper): void {
-    const fixed = triggerHelper.triggerOptions.TTSText;
-    if (typeof fixed === 'object' && fixed !== null && studioBlank(fixed, this.displayLang)) {
-      triggerHelper.studioMuted = true;
-      return;
-    }
     if (this._studioTtsStrings(triggerHelper) === undefined)
       return;
     studioTtsBlankHit = false;
@@ -1663,8 +1658,6 @@ export class PopupText {
   }
 
   _onTriggerInternalPlayAudio(triggerHelper: TriggerHelper): void {
-    if (triggerHelper.studioMuted === true)
-      return;
     if (
       triggerHelper.trigger.sound !== undefined &&
       triggerHelper.soundUrl !== undefined &&
