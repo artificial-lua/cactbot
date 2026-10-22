@@ -1662,6 +1662,12 @@ export class PopupText {
       triggerHelper.studioMuted = true;
       return;
     }
+    // TTSMuteIfOutputs: 이 문구 이름 중 하나라도 문장에 쓰였으면 읽지 않는다(예: ['unknown'] = cactbot 이 징을 못 잡아 '???' 가 들어간 문장, 2026-10-22)
+    const muteIf = (triggerHelper.triggerOptions as { TTSMuteIfOutputs?: unknown }).TTSMuteIfOutputs;
+    if (Array.isArray(muteIf) && muteIf.some((n) => called.has(String(n)))) {
+      triggerHelper.studioMuted = true;
+      return;
+    }
     triggerHelper.studioTts = text ?? null; // TTS 단계에서 다시 렌더링하지 않는다(null = 전용 문구로 만든 문장 없음)
   }
 
@@ -1671,7 +1677,7 @@ export class PopupText {
     if (strings !== undefined && typeof strings === 'object')
       return strings;
     // 전용 문구가 없어도 TTSOnlyIfOutputs 가 있으면 판정하려고 한 번 렌더링한다(문구는 화면과 같다)
-    return Array.isArray(opts.TTSOnlyIfOutputs) ? {} : undefined;
+    return Array.isArray(opts.TTSOnlyIfOutputs) || Array.isArray((opts as { TTSMuteIfOutputs?: unknown }).TTSMuteIfOutputs) ? {} : undefined;
   }
 
   // 응답·알림 함수를 부르기 직전의 data — TTS 전용 문구가 있는 트리거만
