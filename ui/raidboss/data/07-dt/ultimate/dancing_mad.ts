@@ -1220,8 +1220,7 @@ const triggerSet: TriggerSet<Data> = {
         en:
           `Clockwise: Soak first element clockwise to your debuff. If no-debuff, first element counterclockwise that has two towers<br />
           Counterclockwise: Soak first element counterclockwise to your debuff. If no-debuff, first element clockwise that has two towers`,
-        ko:
-          `시계 방향: 내 디버프 원소에서 시계 방향 첫 원소 탑. 디버프가 없으면 반시계 방향으로 탑이 2개인 첫 원소<br />
+        ko: `시계 방향: 내 디버프 원소에서 시계 방향 첫 원소 탑. 디버프가 없으면 반시계 방향으로 탑이 2개인 첫 원소<br />
           반시계 방향: 내 디버프 원소에서 반시계 방향 첫 원소 탑. 디버프가 없으면 시계 방향으로 탑이 2개인 첫 원소`,
       },
       name: {
