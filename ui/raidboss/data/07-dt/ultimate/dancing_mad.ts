@@ -1220,15 +1220,23 @@ const triggerSet: TriggerSet<Data> = {
         en:
           `Clockwise: Soak first element clockwise to your debuff. If no-debuff, first element counterclockwise that has two towers<br />
           Counterclockwise: Soak first element counterclockwise to your debuff. If no-debuff, first element clockwise that has two towers`,
+        ko:
+          `시계 방향: 내 디버프 원소에서 시계 방향 첫 원소 탑. 디버프가 없으면 반시계 방향으로 탑이 2개인 첫 원소<br />
+          반시계 방향: 내 디버프 원소에서 반시계 방향 첫 원소 탑. 디버프가 없으면 시계 방향으로 탑이 2개인 첫 원소`,
       },
       name: {
         en: 'P5 Celestriad Tower Order',
+        ko: '5페 세 개의 별 탑 순서',
       },
       type: 'select',
       options: {
         en: {
           'Clockwise': 'clockwise',
           'Counterclockwise': 'counterclockwise',
+        },
+        ko: {
+          '시계 방향': 'clockwise',
+          '반시계 방향': 'counterclockwise',
         },
       },
       default: 'clockwise',
@@ -9512,24 +9520,31 @@ const triggerSet: TriggerSet<Data> = {
         dirWNW: Outputs.dirWNW,
         fireTowerDir: {
           en: 'Fires are ${dir}',
+          ko: '불 탑: ${dir}',
         },
         iceTowerDir: {
           en: 'Ices are ${dir}',
+          ko: '얼음 탑: ${dir}',
         },
         lightningTowerDir: {
           en: 'Thunders are ${dir}',
+          ko: '번개 탑: ${dir}',
         },
         fire: {
           en: '${towers}',
+          ko: '${towers}',
         },
         ice: {
           en: '${towers}',
+          ko: '${towers}',
         },
         lightning: {
           en: '${towers}',
+          ko: '${towers}',
         },
         twoTowerElement: {
           en: 'No Debuff', // Two Element Tower (later)
+          ko: '디버프 없음',
         },
       },
     },
@@ -9667,54 +9682,71 @@ const triggerSet: TriggerSet<Data> = {
         ...Directions.outputStrings16Dir,
         fireTowerDir: {
           en: 'Get ${dir} Fire',
+          ko: '${dir} 불 탑',
         },
         iceTowerDir: {
           en: 'Get ${dir} Ice',
+          ko: '${dir} 얼음 탑',
         },
         lightningTowerDir: {
           en: 'Get ${dir} Thunder',
+          ko: '${dir} 번개 탑',
         },
         fireTower2Dir: {
           en: 'Get ${dir} Fire #2',
+          ko: '${dir} 불 탑 #2',
         },
         iceTower2Dir: {
           en: 'Get ${dir} Ice #2',
+          ko: '${dir} 얼음 탑 #2',
         },
         lightningTower2Dir: {
           en: 'Get ${dir} Thunder #2',
+          ko: '${dir} 번개 탑 #2',
         },
         fire: {
           en: 'Get Fire Tower',
+          ko: '불 탑',
         },
         ice: {
           en: 'Get Ice Tower',
+          ko: '얼음 탑',
         },
         lightning: {
           en: 'Get Thunder Tower',
+          ko: '번개 탑',
         },
         fireTower2: {
           en: 'Get Fire Tower #2',
+          ko: '불 탑 #2',
         },
         iceTower2: {
           en: 'Get Ice Tower #2',
+          ko: '얼음 탑 #2',
         },
         lightningTower2: {
           en: 'Get Thunder Tower #2',
+          ko: '번개 탑 #2',
         },
         twoTowerElement: {
           en: 'Get Two Element Tower',
+          ko: '탑 2개인 원소',
         },
         vulnTowerCW: {
           en: 'Get Tower CW of ${tower}',
+          ko: '${tower} 시계 방향 탑',
         },
         vulnTowerCCW: {
           en: 'Get Tower CCW of ${tower}',
+          ko: '${tower} 반시계 방향 탑',
         },
         nextElementCW: {
           en: 'Get Next Element CW',
+          ko: '시계 방향 다음 원소',
         },
         nextElementCCW: {
           en: 'Get Next Element CCW',
+          ko: '반시계 방향 다음 원소',
         },
       },
     },
