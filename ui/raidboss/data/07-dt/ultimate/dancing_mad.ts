@@ -946,6 +946,7 @@ const forsakenP5OutputStrings: OutputStrings = {
   },
   numMech: {
     en: '${num}: ${mech}',
+    ko: '${num}: ${mech}',
   },
 };
 
@@ -9019,15 +9020,19 @@ const triggerSet: TriggerSet<Data> = {
       outputStrings: {
         aoe4: {
           en: 'AoE x4',
+          ko: '전체 공격 x4',
         },
         roleStacks2: {
           en: 'Role Stacks x2',
+          ko: '역할별 쉐어 x2',
         },
         roleStacks3: {
           en: 'Role Stacks x3',
+          ko: '역할별 쉐어 x3',
         },
         mechThenMech: {
           en: '${mech1} => ${mech2}',
+          ko: '${mech1} => ${mech2}',
         },
       },
     },
@@ -9070,9 +9075,11 @@ const triggerSet: TriggerSet<Data> = {
       outputStrings: {
         roleStacks2: {
           en: 'Role Stacks x2',
+          ko: '역할별 쉐어 x2',
         },
         roleStacks3: {
           en: 'Role Stacks x3',
+          ko: '역할별 쉐어 x3',
         },
       },
     },
@@ -9198,10 +9205,12 @@ const triggerSet: TriggerSet<Data> = {
         },
         floodDirClock: {
           en: '${dir} => ${clock}',
+          ko: '${dir} => ${clock}',
         },
         stack: Outputs.stackMarker,
         mechPlusMech: {
           en: '${mech1} + ${mech2}',
+          ko: '${mech1} + ${mech2}',
         },
       },
     },
@@ -9231,6 +9240,7 @@ const triggerSet: TriggerSet<Data> = {
         sharedTankbuster: Outputs.sharedTankbuster,
         mechThenMech: {
           en: '${mech1} => ${mech2}',
+          ko: '${mech1} => ${mech2}',
         },
       },
     },
@@ -9299,6 +9309,7 @@ const triggerSet: TriggerSet<Data> = {
         sharedTankbuster: Outputs.sharedTankbuster,
         mechPlusMech: {
           en: '${mech1} + ${mech2}',
+          ko: '${mech1} + ${mech2}',
         },
       },
     },
@@ -9333,12 +9344,15 @@ const triggerSet: TriggerSet<Data> = {
         sharedTankbuster: Outputs.sharedTankbuster,
         flare: {
           en: 'Big AOE on YOU',
+          ko: '큰 장판 대상자',
         },
         holy: {
           en: 'Small AOE on YOU',
+          ko: '작은 장판 대상자',
         },
         mechThenMech: {
           en: '${mech1} => ${mech2}',
+          ko: '${mech1} => ${mech2}',
         },
       },
     },
@@ -9355,9 +9369,11 @@ const triggerSet: TriggerSet<Data> = {
         output.responseOutputStrings = {
           flare: {
             en: 'Big Tank Buster AOE on YOU',
+            ko: '큰 광역 탱버 대상자',
           },
           holy: {
             en: 'Small Tank Buster AOE on YOU',
+            ko: '작은 광역 탱버 대상자',
           },
           tankBusters: {
             en: 'Tank Busters',
@@ -9824,21 +9840,27 @@ const triggerSet: TriggerSet<Data> = {
       outputStrings: {
         rightSafeNW: {
           en: 'NW: Right', // Right Out (NNE to ENE) + Left In (WNW to SSE)
+          ko: '북서: 오른쪽',
         },
         leftSafeNW: {
           en: 'NW: Left', // Left Out (WSW to SSW) + Right In (NNW to ESE)
+          ko: '북서: 왼쪽',
         },
         middleSafeNW: {
           en: 'NW: Middle', // Middle (NW to SE) + Out (NE/SW)
+          ko: '북서: 가운데',
         },
         rightSafeNE: {
           en: 'NE: Right', // Right Out (ESE to SSE) + Left In (NNE to WSW)
+          ko: '북동: 오른쪽',
         },
         leftSafeNE: {
           en: 'NE: Left', // Left Out (NNW to WNW) + Right In (ENE to SSW)
+          ko: '북동: 왼쪽',
         },
         middleSafeNE: {
           en: 'NE: Middle', // Middle (NE to SW) + Out (NW/SE)
+          ko: '북동: 가운데',
         },
       },
     },
