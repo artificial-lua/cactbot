@@ -283,6 +283,14 @@ let studioTtsStrings: OutputStrings | undefined;
 let studioTtsBlankHit = false;
 // Studio Artificial: TTS 렌더링 중 불린 문구 이름(TTSOnlyIfOutputs 판정용 — 예: 'you' 가 불렸으면 '나'가 대상)
 const studioTtsCalled = new Set<string>();
+// Studio Artificial: TTS 렌더링 중인 사람의 역할 묶음 — 문구에 '<언어>@support'(탱힐)·'<언어>@dps'(딜러) 가 있으면 그것을 쓴다(2026-10-22)
+let studioRoleKey: 'support' | 'dps' | undefined;
+const studioPick = (t: unknown, lang: string): unknown => {
+  if (studioRoleKey === undefined || typeof t !== 'object' || t === null)
+    return t;
+  const v = (t as { [k: string]: unknown })[`${lang}@${studioRoleKey}`];
+  return typeof v === 'string' ? { ...(t as { [k: string]: unknown }), [lang]: v } : t;
+};
 const studioBlank = (t: unknown, lang: string): boolean => {
   if (typeof t === 'string')
     return t.trim() === '';
@@ -378,11 +386,12 @@ class TriggerOutputProxy {
           // this well-defined smooths out the collision edge cases.
           if (studioTtsStrings !== undefined)
             studioTtsCalled.add(name);
-          if (studioTtsStrings !== undefined && studioTtsStrings[name] !== undefined && studioBlank(studioTtsStrings[name], target.displayLang))
+          const studioTpl = studioTtsStrings !== undefined ? studioPick(studioTtsStrings[name], target.displayLang) : undefined;
+          if (studioTpl !== undefined && studioBlank(studioTpl, target.displayLang))
             studioTtsBlankHit = true;
           let str = studioTtsStrings !== undefined
             ? target.getReplacement(
-              studioTtsStrings[name] as OutputStrings[string],
+              studioTpl as OutputStrings[string],
               params,
               name,
               id,
@@ -1593,6 +1602,8 @@ export class PopupText {
       return evaluate(obj[this.displayLang] ?? obj['en']);
     };
     studioTtsStrings = strings;
+    const role = (data as { role?: string }).role;
+    studioRoleKey = role === 'dps' ? 'dps' : role === 'tank' || role === 'healer' ? 'support' : undefined;
     try {
       let response: ResponseField<RaidbossData, Matches> | undefined;
       for (const textType of ['alarm', 'alert', 'info'] as const) {
@@ -1629,6 +1640,7 @@ export class PopupText {
       return undefined;
     } finally {
       studioTtsStrings = undefined;
+      studioRoleKey = undefined;
     }
   }
 
