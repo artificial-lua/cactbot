@@ -283,6 +283,14 @@ let studioTtsStrings: OutputStrings | undefined;
 let studioTtsBlankHit = false;
 // Studio Artificial: TTS 렌더링 중 불린 문구 이름(TTSOnlyIfOutputs 판정용 — 예: 'you' 가 불렸으면 '나'가 대상)
 const studioTtsCalled = new Set<string>();
+// Studio Artificial: TTS 렌더링 중인 사람의 역할 묶음 — 문구에 '<언어>@support'(탱힐)·'<언어>@dps'(딜러) 가 있으면 그것을 쓴다(2026-10-22)
+let studioRoleKey: 'support' | 'dps' | undefined;
+const studioPick = (t: unknown, lang: string): unknown => {
+  if (studioRoleKey === undefined || typeof t !== 'object' || t === null)
+    return t;
+  const v = (t as { [k: string]: unknown })[`${lang}@${studioRoleKey}`];
+  return typeof v === 'string' ? { ...(t as { [k: string]: unknown }), [lang]: v } : t;
+};
 const studioBlank = (t: unknown, lang: string): boolean => {
   if (typeof t === 'string')
     return t.trim() === '';
@@ -378,11 +386,12 @@ class TriggerOutputProxy {
           // this well-defined smooths out the collision edge cases.
           if (studioTtsStrings !== undefined)
             studioTtsCalled.add(name);
-          if (studioTtsStrings !== undefined && studioTtsStrings[name] !== undefined && studioBlank(studioTtsStrings[name], target.displayLang))
+          const studioTpl = studioTtsStrings !== undefined ? studioPick(studioTtsStrings[name], target.displayLang) : undefined;
+          if (studioTpl !== undefined && studioBlank(studioTpl, target.displayLang))
             studioTtsBlankHit = true;
           let str = studioTtsStrings !== undefined
             ? target.getReplacement(
-              studioTtsStrings[name] as OutputStrings[string],
+              studioTpl as OutputStrings[string],
               params,
               name,
               id,
@@ -1593,6 +1602,8 @@ export class PopupText {
       return evaluate(obj[this.displayLang] ?? obj['en']);
     };
     studioTtsStrings = strings;
+    const role = (data as { role?: string }).role;
+    studioRoleKey = role === 'dps' ? 'dps' : role === 'tank' || role === 'healer' ? 'support' : undefined;
     try {
       let response: ResponseField<RaidbossData, Matches> | undefined;
       for (const textType of ['alarm', 'alert', 'info'] as const) {
@@ -1629,6 +1640,7 @@ export class PopupText {
       return undefined;
     } finally {
       studioTtsStrings = undefined;
+      studioRoleKey = undefined;
     }
   }
 
@@ -1662,6 +1674,12 @@ export class PopupText {
       triggerHelper.studioMuted = true;
       return;
     }
+    // TTSMuteIfOutputs: 이 문구 이름 중 하나라도 문장에 쓰였으면 읽지 않는다(예: ['unknown'] = cactbot 이 징을 못 잡아 '???' 가 들어간 문장, 2026-10-22)
+    const muteIf = (triggerHelper.triggerOptions as { TTSMuteIfOutputs?: unknown }).TTSMuteIfOutputs;
+    if (Array.isArray(muteIf) && muteIf.some((n) => called.has(String(n)))) {
+      triggerHelper.studioMuted = true;
+      return;
+    }
     triggerHelper.studioTts = text ?? null; // TTS 단계에서 다시 렌더링하지 않는다(null = 전용 문구로 만든 문장 없음)
   }
 
@@ -1671,7 +1689,7 @@ export class PopupText {
     if (strings !== undefined && typeof strings === 'object')
       return strings;
     // 전용 문구가 없어도 TTSOnlyIfOutputs 가 있으면 판정하려고 한 번 렌더링한다(문구는 화면과 같다)
-    return Array.isArray(opts.TTSOnlyIfOutputs) ? {} : undefined;
+    return Array.isArray(opts.TTSOnlyIfOutputs) || Array.isArray((opts as { TTSMuteIfOutputs?: unknown }).TTSMuteIfOutputs) ? {} : undefined;
   }
 
   // 응답·알림 함수를 부르기 직전의 data — TTS 전용 문구가 있는 트리거만
